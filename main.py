@@ -1,8 +1,13 @@
 import os
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
+from typing import List, Optional
 
-app = FastAPI()
+from database import create_document, get_documents
+from schemas import Booking
+
+app = FastAPI(title="Vadakkumpuram Sree Vishnumaya Devasthanam API")
 
 app.add_middleware(
     CORSMiddleware,
@@ -14,11 +19,39 @@ app.add_middleware(
 
 @app.get("/")
 def read_root():
-    return {"message": "Hello from FastAPI Backend!"}
+    return {"message": "Vadakkumpuram API running"}
 
-@app.get("/api/hello")
-def hello():
-    return {"message": "Hello from the backend API!"}
+@app.get("/api/services")
+def list_services():
+    services = [
+        {"id": "badha-dosha-pariharam", "title": "Badha Dosha Pariharam", "summary": "Remove obstacles and negative influences.", "price": "On Request"},
+        {"id": "black-magic-removal", "title": "Black Magic Removal", "summary": "Protection from dark energies.", "price": "On Request"},
+        {"id": "sathru-samhara-pooja", "title": "Sathru Samhara Pooja", "summary": "Victory over enemies and challenges.", "price": "On Request"},
+        {"id": "vishnumaya-blessing", "title": "Vishnumaya Blessing", "summary": "Receive divine grace and guidance.", "price": "On Request"},
+        {"id": "vishnumaya-saktheya-pooja", "title": "Vishnumaya Saktheya Pooja", "summary": "Invoke powerful protection and strength.", "price": "On Request"},
+        {"id": "real-estate-pooja", "title": "Real Estate Pooja", "summary": "Auspicious blessings for property matters.", "price": "On Request"},
+    ]
+    return {"services": services}
+
+@app.post("/api/book")
+def create_booking(booking: Booking):
+    try:
+        booking_id = create_document("booking", booking)
+        return {"status": "success", "id": booking_id}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/bookings")
+def list_bookings(limit: int = 20):
+    try:
+        docs = get_documents("booking", limit=limit)
+        # Convert ObjectId to string if present
+        for d in docs:
+            if "_id" in d:
+                d["id"] = str(d.pop("_id"))
+        return {"bookings": docs}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/test")
 def test_database():
